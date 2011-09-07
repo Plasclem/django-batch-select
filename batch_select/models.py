@@ -1,6 +1,8 @@
 from django.db.models.query import QuerySet
 from django.db import models, connection
 from django.db.models.fields import FieldDoesNotExist
+from django.contrib.contenttypes.generic import GenericRelation
+from django.contrib.contenttypes.models import ContentType
 
 from django.conf import settings
 
@@ -31,8 +33,11 @@ def _id_attr(id_column):
     # with the regular id column)
     return '__%s' % id_column.lower()
 
-def _select_related_instances(related_model, related_name, ids, db_table, id_column):
+def _select_related_instances(related_model, related_name, ids, db_table, id_column, generic):
     id__in_filter={ ('%s__pk__in' % related_name): ids }
+    
+    if generic:
+        id__in_filter.update(generic)
     qn = connection.ops.quote_name
     select = { _id_attr(id_column): '%s.%s' % (qn(db_table), qn(id_column)) }
     related_instances = related_model._default_manager \
@@ -66,6 +71,13 @@ def batch_select(model, instances, target_field_name, fieldname, filter=None):
     ids = [instance.pk for instance in instances]
     
     field_object, model, direct, m2m = model._meta.get_field_by_name(fieldname)
+    if isinstance(field_object, GenericRelation):
+        ct_field_name = field_object.content_type_field_name
+        ct_pk = ContentType.objects.get_for_model(field_object.model).pk
+        generic = {ct_field_name: ct_pk}
+    else:
+        generic = False
+    
     if m2m:
         if not direct:
             m2m_field = field_object.field
@@ -88,7 +100,8 @@ def batch_select(model, instances, target_field_name, fieldname, filter=None):
         db_table = related_model._meta.db_table
     
     related_instances = _select_related_instances(related_model, related_name, 
-                                                  ids, db_table, id_column)
+                                                  ids, db_table, id_column,
+                                                  generic)
     
     if filter:
         related_instances = filter(related_instances)
