@@ -123,7 +123,7 @@ class Batch(Replay):
     # functions on QuerySet that we can invoke via this batch object
     __replayable__ = ('filter', 'exclude', 'annotate', 
                       'order_by', 'reverse', 'select_related',
-                      'extra', 'defer', 'only', 'batch_select')
+                      'extra', 'defer', 'only', 'batch_select', 'prefetch_related')
     
     def __init__(self, m2m_fieldname, **filter):
         super(Batch,self).__init__()
