@@ -182,7 +182,7 @@ class BatchQuerySet(QuerySet):
 class BatchManager(models.Manager):
     use_for_related_fields = True
     
-    def get_query_set(self):
+    def get_queryset(self):
         return BatchQuerySet(self.model)
     
     def batch_select(self, *batches, **named_batches):
